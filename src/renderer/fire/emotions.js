@@ -14,7 +14,7 @@ export const EMOTIONS = {
     edgeGlow: 0.5,
     particleDensity: 1.0,
     particleSpeed: 1.0,
-    bloomStrength: 1.2,
+    bloomStrength: 0.5,
     hatFloat: 0.0,                    // hat resting on head
     morphToSphere: 0.0,              // full humanoid
     description: '安静燃烧 — 人形火焰，边缘跳动'
@@ -30,7 +30,7 @@ export const EMOTIONS = {
     edgeGlow: 0.9,
     particleDensity: 3.0,
     particleSpeed: 2.5,
-    bloomStrength: 2.0,
+    bloomStrength: 0.8,
     hatFloat: 0.08,                   // hat lifts off from fire expansion
     morphToSphere: 0.0,
     burstOnStart: true,
@@ -47,7 +47,7 @@ export const EMOTIONS = {
     edgeGlow: 0.8,
     particleDensity: 0.15,
     particleSpeed: 0.3,
-    bloomStrength: 1.5,
+    bloomStrength: 0.7,
     hatFloat: 0.0,
     morphToSphere: 0.0,
     description: '收缩为精密的蓝白色光芯，体积缩到一半'
@@ -63,7 +63,7 @@ export const EMOTIONS = {
     edgeGlow: 0.6,
     particleDensity: 1.8,
     particleSpeed: 1.8,
-    bloomStrength: 1.5,
+    bloomStrength: 0.6,
     hatFloat: 0.02,
     morphToSphere: 0.0,
     description: '快速跳动，暖橙色脉冲'
@@ -79,7 +79,7 @@ export const EMOTIONS = {
     edgeGlow: 0.2,
     particleDensity: 0.05,
     particleSpeed: 0.2,
-    bloomStrength: 0.6,
+    bloomStrength: 0.3,
     hatFloat: -0.5,                   // hat falls off, on ground
     morphToSphere: 1.0,              // full sphere = first form
     description: '退回第一形态 — 拳头大小的橙色火球'
@@ -95,7 +95,7 @@ export const EMOTIONS = {
     edgeGlow: 0.5,
     particleDensity: 2.5,
     particleSpeed: 3.5,
-    bloomStrength: 1.3,
+    bloomStrength: 0.5,
     hatFloat: 0.03,                   // slight hat tilt from spark burst
     morphToSphere: 0.0,
     burstOnStart: true,

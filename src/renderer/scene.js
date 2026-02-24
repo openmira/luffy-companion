@@ -59,12 +59,12 @@ export class LuffyScene {
     const renderPass = new RenderPass(this.scene, this.camera);
     this.composer.addPass(renderPass);
     
-    // Bloom — the key to making fire glow
+    // Bloom — subtle glow, not nuclear explosion
     this.bloomPass = new UnrealBloomPass(
       new THREE.Vector2(window.innerWidth, window.innerHeight),
-      1.2,   // strength
-      0.4,   // radius
-      0.3    // threshold (low = more bloom)
+      0.6,   // strength (was 1.2 — way too much)
+      0.5,   // radius (softer spread)
+      0.7    // threshold (higher = only bright spots bloom)
     );
     this.composer.addPass(this.bloomPass);
     
@@ -129,11 +129,13 @@ export class LuffyScene {
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       side: THREE.DoubleSide,
+      opacity: 0.3,
     });
     outerMaterial.uniforms.uFlickerIntensity = { value: 0.5 };
+    outerMaterial.uniforms.uEdgeGlow = { value: 0.3 };
     
     this.outerFlame = new THREE.Mesh(outerGeom, outerMaterial);
-    this.outerFlame.scale.set(1.08, 1.05, 1.08);
+    this.outerFlame.scale.set(1.12, 1.08, 1.12);
     this.scene.add(this.outerFlame);
     
     this.outerUniforms = outerUniforms;
@@ -171,8 +173,8 @@ export class LuffyScene {
     this.core.position.set(0, 0.9, 0.05);
     this.scene.add(this.core);
     
-    // Core point light
-    this.coreLight = new THREE.PointLight(0x6699ff, 1.5, 2);
+    // Core point light (subtle blue hint)
+    this.coreLight = new THREE.PointLight(0x6699ff, 0.8, 1.5);
     this.coreLight.position.copy(this.core.position);
     this.scene.add(this.coreLight);
   }
@@ -184,8 +186,8 @@ export class LuffyScene {
   }
   
   _initLighting() {
-    // Main fire glow
-    this.fireLight = new THREE.PointLight(0xff6b35, 3, 8);
+    // Main fire glow (restrained)
+    this.fireLight = new THREE.PointLight(0xff6b35, 1.5, 5);
     this.fireLight.position.set(0, 0.8, 1.0);
     this.scene.add(this.fireLight);
     
@@ -255,14 +257,14 @@ export class LuffyScene {
     this.fireUniforms.uAudioLevel.value = this.audioLevel;
     this.fireUniforms.uEdgeGlow.value = p.edgeGlow;
     
-    // Outer flame follows inner but with more displacement
-    this.outerUniforms.uTime.value = elapsed;
+    // Outer flame: wispy haze layer, much dimmer than inner
+    this.outerUniforms.uTime.value = elapsed + 0.5; // offset for visual variety
     this.outerUniforms.uColor.value = this.fireUniforms.uColor.value;
     this.outerUniforms.uCoreColor.value = this.fireUniforms.uCoreColor.value;
-    this.outerUniforms.uFlickerSpeed.value = p.flickerSpeed;
-    this.outerUniforms.uDisplaceStrength.value = p.displaceStrength * 1.8;
-    this.outerUniforms.uCoreIntensity.value = p.coreIntensity * 0.3;
-    this.outerUniforms.uAudioLevel.value = this.audioLevel;
+    this.outerUniforms.uFlickerSpeed.value = p.flickerSpeed * 0.8;
+    this.outerUniforms.uDisplaceStrength.value = p.displaceStrength * 2.5;
+    this.outerUniforms.uCoreIntensity.value = p.coreIntensity * 0.15;
+    this.outerUniforms.uAudioLevel.value = this.audioLevel * 0.5;
     
     // Scale the body
     const s = p.scale;
@@ -285,11 +287,11 @@ export class LuffyScene {
     const corePulse = 1.0 + Math.sin(elapsed * 3.0) * 0.1;
     this.core.scale.setScalar(s * corePulse);
     this.coreLight.position.y = coreY;
-    this.coreLight.intensity = p.coreIntensity * 2.0;
+    this.coreLight.intensity = p.coreIntensity * 0.8;
     this.coreLight.color.set(p.coreColor[0], p.coreColor[1], p.coreColor[2]);
     
-    // Fire light
-    this.fireLight.intensity = 2 + s * 2;
+    // Fire light (subtle, not blinding)
+    this.fireLight.intensity = 1.0 + s * 0.8;
     this.fireLight.color.setRGB(p.color[0], p.color[1] * 0.6, p.color[2] * 0.3);
     
     // Bloom strength tracks emotion

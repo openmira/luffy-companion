@@ -214,20 +214,20 @@ void main(){
   float centerDist = length(vWorldPos.xz);
   float innerCore = exp(-centerDist * centerDist * 30.0) * coreMask;
   
-  // Blend core color
-  col = mix(col, uCoreColor, innerCore * 0.8);
-  col = mix(col, vec3(1.0, 0.95, 0.8), innerCore * 0.4); // hot white
+  // Blend core color — visible but not overwhelming
+  col = mix(col, uCoreColor, innerCore * 0.6);
+  col = mix(col, vec3(1.0, 0.92, 0.7), innerCore * 0.25); // subtle hot white
   
   // Upper regions: brighter orange-yellow (fire tips)
   col = mix(col, vec3(1.0, 0.6, 0.15), heightNorm * 0.3);
   
   // Dark veins from noise (the "lava-like" texture from concept art)
-  float veins = smoothstep(0.0, 0.3, -fireNoise);
-  col = mix(col, uColor * vec3(0.4, 0.12, 0.05), veins * 0.6);
+  float veins = smoothstep(-0.05, 0.35, -fireNoise);
+  col = mix(col, uColor * vec3(0.25, 0.08, 0.02), veins * 0.7);
   
-  // Bright noise ridges
-  float ridges = smoothstep(0.2, 0.5, fireNoise);
-  col += vec3(0.15, 0.06, 0.01) * ridges;
+  // Bright noise ridges — hot streaks
+  float ridges = smoothstep(0.15, 0.5, fireNoise);
+  col = mix(col, vec3(1.0, 0.65, 0.2), ridges * 0.35);
   
   // Audio reactivity
   col += vec3(0.1, 0.04, 0.0) * uAudioLevel;
@@ -245,17 +245,19 @@ void main(){
   col *= flicker;
   
   // === ALPHA ===
-  // Mostly opaque body, soft fade at extreme edges and top
-  float alpha = 0.92;
+  // Semi-transparent so layers blend without whiteout
+  float alpha = 0.75;
   // Soften at head top
-  alpha *= smoothstep(1.8, 1.5, vHeight);
+  alpha *= smoothstep(1.8, 1.4, vHeight);
   // Fresnel edge softness (wispy fire edges)
-  alpha *= 1.0 - fresnel * 0.3;
+  alpha *= 1.0 - fresnel * 0.4;
   // Displacement-based: highly displaced areas more transparent (wispy)
-  alpha *= 1.0 - smoothstep(0.05, 0.15, abs(vDisplacement)) * 0.2;
+  alpha *= 1.0 - smoothstep(0.05, 0.15, abs(vDisplacement)) * 0.3;
   
-  // HDR: allow values > 1.0 for bloom to pick up
-  col *= 1.5;
+  // Controlled HDR: only bright spots exceed 1.0 for bloom pickup
+  // Keep most of the fire sub-1.0 so texture detail is visible
+  float luminance = dot(col, vec3(0.299, 0.587, 0.114));
+  col *= mix(0.85, 1.3, smoothstep(0.5, 1.0, luminance));
   
   gl_FragColor = vec4(col, alpha);
 }
