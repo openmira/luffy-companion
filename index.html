@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🔥 Luffy Companion</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: #0a0a0a; 
+      overflow: hidden;
+      font-family: -apple-system, sans-serif;
+    }
+    #app { width: 100vw; height: 100vh; }
+    #controls {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 8px;
+      z-index: 10;
+    }
+    .emotion-btn {
+      padding: 8px 16px;
+      border: 1px solid #333;
+      border-radius: 20px;
+      background: rgba(20, 20, 20, 0.8);
+      color: #ccc;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .emotion-btn:hover { background: rgba(50, 50, 50, 0.8); color: #fff; }
+    .emotion-btn.active { border-color: #ff6b35; color: #ff6b35; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+  <div id="controls">
+    <button class="emotion-btn active" data-emotion="idle">🔥 安静</button>
+    <button class="emotion-btn" data-emotion="excited">🎉 兴奋</button>
+    <button class="emotion-btn" data-emotion="thinking">🤔 思考</button>
+    <button class="emotion-btn" data-emotion="happy">😊 开心</button>
+    <button class="emotion-btn" data-emotion="tired">😴 疲惫</button>
+    <button class="emotion-btn" data-emotion="sarcastic">😏 吐槽</button>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
