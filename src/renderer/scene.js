@@ -54,11 +54,13 @@ export class LuffyScene {
       uTime: { value: 0 },
       uScale: { value: 1.0 },
       uColor: { value: new THREE.Vector3(1.0, 0.42, 0.21) },
-      uCoreColor: { value: new THREE.Vector3(0.23, 0.51, 0.96) },
+      uCoreColor: { value: new THREE.Vector3(0.4, 0.6, 1.0) },
       uFlickerSpeed: { value: 1.0 },
-      uFlickerIntensity: { value: 0.3 },
+      uFlickerIntensity: { value: 0.35 },
       uPulseSpeed: { value: 0.0 },
       uAudioLevel: { value: 0.0 },
+      uHumanoid: { value: 1.0 },
+      uGlowRadius: { value: 0.3 },
     };
     
     const material = new THREE.ShaderMaterial({
@@ -150,6 +152,8 @@ export class LuffyScene {
     this.fireUniforms.uFlickerIntensity.value = p.flickerIntensity;
     this.fireUniforms.uPulseSpeed.value = p.pulseSpeed;
     this.fireUniforms.uAudioLevel.value = this.audioLevel;
+    this.fireUniforms.uHumanoid.value = p.humanoid ?? 1.0;
+    this.fireUniforms.uGlowRadius.value = p.glowRadius ?? 0.3;
     
     // Scale the fire mesh
     this.fireMesh.scale.set(p.scale, p.scale, 1);

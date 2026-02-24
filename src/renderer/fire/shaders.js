@@ -1,6 +1,11 @@
 /**
  * Custom fire shaders for Luffy's flame body
- * Volumetric noise-based fire with emotion-driven parameters
+ * Based on Luffy's canon lore:
+ * - 橙红色火焰凝聚成人形，边缘永远在跳动
+ * - 核心蓝白光芯（思考时更明显）
+ * - 兴奋时膨胀+火星四溅
+ * - 疲惫时收缩为拳头大小的橙色火球（第一形态）
+ * - 流形族：边缘永远模糊
  */
 
 export const fireVertexShader = /* glsl */`
@@ -23,11 +28,13 @@ uniform float uFlickerSpeed;
 uniform float uFlickerIntensity;
 uniform float uPulseSpeed;
 uniform float uAudioLevel;
+uniform float uHumanoid;    // 0=sphere, 1=humanoid silhouette
+uniform float uGlowRadius;  // warm glow around fire
 
 varying vec2 vUv;
 varying vec3 vPosition;
 
-// Simplex noise functions
+// --- High quality simplex noise ---
 vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
 vec4 permute(vec4 x) { return mod289(((x * 34.0) + 1.0) * x); }
@@ -89,61 +96,158 @@ float snoise(vec3 v) {
   return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
 }
 
-float fbm(vec3 p, int octaves) {
+// Higher quality FBM with 6 octaves
+float fbm(vec3 p) {
+  float value = 0.0;
+  float amplitude = 0.5;
+  float frequency = 1.0;
+  for (int i = 0; i < 6; i++) {
+    value += amplitude * snoise(p * frequency);
+    frequency *= 2.2;
+    amplitude *= 0.45;
+  }
+  return value;
+}
+
+// Turbulence (absolute value noise) for wispy details
+float turbulence(vec3 p) {
   float value = 0.0;
   float amplitude = 0.5;
   float frequency = 1.0;
   for (int i = 0; i < 5; i++) {
-    if (i >= octaves) break;
-    value += amplitude * snoise(p * frequency);
+    value += amplitude * abs(snoise(p * frequency));
     frequency *= 2.0;
     amplitude *= 0.5;
   }
   return value;
 }
 
+// Humanoid silhouette SDF (head + torso + shoulders)
+float humanoidShape(vec2 uv) {
+  // Remap: y=0 bottom, y=1 top
+  float y = uv.y;
+  float x = uv.x - 0.5; // center x
+  
+  // Head region (y: 0.78-0.92)
+  float headY = smoothstep(0.75, 0.82, y) * smoothstep(0.95, 0.88, y);
+  float headWidth = 0.12;
+  float head = headY * smoothstep(headWidth, headWidth * 0.3, abs(x));
+  
+  // Neck (y: 0.70-0.78)
+  float neckY = smoothstep(0.65, 0.72, y) * smoothstep(0.82, 0.75, y);
+  float neckWidth = 0.06;
+  float neck = neckY * smoothstep(neckWidth, neckWidth * 0.3, abs(x));
+  
+  // Shoulders (y: 0.55-0.70) - wider
+  float shoulderY = smoothstep(0.48, 0.56, y) * smoothstep(0.72, 0.66, y);
+  float shoulderWidth = 0.22 * smoothstep(0.48, 0.62, y);
+  float shoulders = shoulderY * smoothstep(shoulderWidth, shoulderWidth * 0.5, abs(x));
+  
+  // Torso (y: 0.15-0.55) - tapers down
+  float torsoY = smoothstep(0.08, 0.18, y) * smoothstep(0.56, 0.50, y);
+  float torsoWidth = mix(0.16, 0.20, smoothstep(0.15, 0.50, y));
+  float torso = torsoY * smoothstep(torsoWidth, torsoWidth * 0.4, abs(x));
+  
+  // Combine
+  return max(max(head, neck), max(shoulders, torso));
+}
+
+// Sphere shape for tired/first-form mode
+float sphereShape(vec2 uv) {
+  vec2 center = vec2(0.5, 0.4);
+  float dist = length(uv - center);
+  return smoothstep(0.22, 0.05, dist);
+}
+
 void main() {
   vec2 uv = vUv;
   
-  // Center the UV and create flame shape
-  vec2 centered = (uv - 0.5) * 2.0;
-  float dist = length(centered);
+  // --- Base shape ---
+  // Blend between humanoid and sphere based on uHumanoid
+  float humanoid = humanoidShape(uv);
+  float sphere = sphereShape(uv);
+  float baseShape = mix(sphere, humanoid, uHumanoid);
   
-  // Flame shape: narrow at top, wide at bottom
-  float flameShape = 1.0 - smoothstep(0.0, 0.6, abs(centered.x) / (1.0 - uv.y * 0.7));
-  flameShape *= 1.0 - smoothstep(0.0, 1.0, uv.y); // fade at top
-  flameShape *= smoothstep(0.0, 0.15, uv.y); // fade at very bottom
-  
-  // Animated noise for flame movement
+  // --- Animated noise for realistic fire ---
   float time = uTime * uFlickerSpeed;
-  vec3 noiseCoord = vec3(centered * 3.0, time * 0.5);
-  noiseCoord.y -= time * 1.5; // upward movement
   
-  float noise1 = fbm(noiseCoord, 4);
-  float noise2 = fbm(noiseCoord * 2.0 + 3.14, 3);
+  // Primary fire noise - large scale movement
+  vec3 noiseCoord1 = vec3(
+    (uv.x - 0.5) * 4.0,
+    uv.y * 5.0 - time * 1.8,
+    time * 0.3
+  );
+  float noise1 = fbm(noiseCoord1);
   
-  // Combine shape with noise
-  float flame = flameShape + noise1 * uFlickerIntensity;
-  flame = smoothstep(0.1, 0.9, flame);
+  // Secondary noise - fine detail / wispy edges
+  vec3 noiseCoord2 = vec3(
+    (uv.x - 0.5) * 8.0 + 1.7,
+    uv.y * 8.0 - time * 2.5,
+    time * 0.5 + 3.14
+  );
+  float noise2 = turbulence(noiseCoord2);
   
-  // Audio reactivity - expand flame with audio
-  flame *= 1.0 + uAudioLevel * 0.3;
+  // Tertiary noise - very fine grain for texture
+  vec3 noiseCoord3 = vec3(
+    (uv.x - 0.5) * 16.0 + 5.2,
+    uv.y * 14.0 - time * 3.0,
+    time * 0.7 + 7.0
+  );
+  float noise3 = snoise(noiseCoord3) * 0.5 + 0.5;
   
-  // Pulse effect
+  // --- Combine shape + noise ---
+  float flame = baseShape;
+  // Add noise displacement to edges (more on top, less on bottom)
+  float edgeNoise = noise1 * uFlickerIntensity * (0.5 + uv.y * 0.8);
+  flame += edgeNoise;
+  // Add fine turbulence for wispy look
+  flame += noise2 * 0.12 * baseShape;
+  
+  // Soft falloff (Fluxborn: edges always blurry)
+  flame = smoothstep(0.05, 0.55, flame);
+  
+  // --- Audio reactivity ---
+  flame *= 1.0 + uAudioLevel * 0.4;
+  
+  // --- Pulse effect ---
   if (uPulseSpeed > 0.0) {
-    flame *= 1.0 + sin(uTime * uPulseSpeed * 6.28) * 0.15;
+    flame *= 1.0 + sin(uTime * uPulseSpeed * 6.28) * 0.12;
   }
   
-  // Color gradient: core (bottom/center) to outer
-  float coreAmount = smoothstep(0.5, 0.9, flame) * (1.0 - uv.y * 0.8);
-  vec3 color = mix(uColor, uCoreColor, coreAmount);
+  // --- Color gradient ---
+  // Core: blue-white center (always slightly visible, more in thinking mode)
+  float coreIntensity = smoothstep(0.4, 0.85, flame) * smoothstep(0.1, 0.5, 1.0 - abs(uv.x - 0.5) * 4.0);
+  coreIntensity *= smoothstep(0.0, 0.5, uv.y) * smoothstep(0.85, 0.6, uv.y); // core in mid-body
   
-  // Add bright tips
-  color += vec3(0.3, 0.15, 0.0) * noise2 * flame;
+  vec3 color = uColor;
   
-  // Final alpha
-  float alpha = flame * smoothstep(0.0, 0.1, flame);
+  // Hot inner glow (yellow-white at center)
+  float hotCenter = coreIntensity * 0.6;
+  color = mix(color, vec3(1.0, 0.85, 0.5), hotCenter);
+  
+  // Core color blend (blue-white for thinking, subtle for others)
+  color = mix(color, uCoreColor, coreIntensity * 0.7);
+  
+  // Darker edges (orange to dark red)
+  float edgeFade = 1.0 - smoothstep(0.2, 0.7, flame);
+  color = mix(color, uColor * 0.5, edgeFade * 0.3);
+  
+  // Fine texture variation
+  color += vec3(0.08, 0.03, 0.0) * noise3 * flame;
+  
+  // --- Warm glow halo (Luffy radiates warmth) ---
+  float glowDist = length(uv - vec2(0.5, 0.45));
+  float glow = exp(-glowDist * glowDist / (uGlowRadius * uGlowRadius + 0.001)) * 0.15;
+  color += uColor * glow;
+  
+  // --- Final alpha with soft edges ---
+  float alpha = flame;
+  // Extra soft fadeout at very edges
+  alpha *= smoothstep(0.0, 0.08, flame);
   alpha = clamp(alpha, 0.0, 1.0);
+  
+  // Add glow to alpha (subtle warm halo)
+  alpha = max(alpha, glow * 0.5);
   
   gl_FragColor = vec4(color, alpha);
 }
